@@ -23,9 +23,20 @@
         
         #authModal { display: none; }
         #authModal.active { display: flex; }
+        
+        .loading-overlay { 
+            position: fixed; inset: 0; background: white; z-index: 200; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body class="min-h-screen text-slate-800">
+
+    <!-- Tela de Carregamento Inicial -->
+    <div id="loadingScreen" class="loading-overlay">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
+        <p class="text-slate-500 font-medium animate-pulse">Sincronizando com a nuvem...</p>
+    </div>
 
     <!-- Navegação -->
     <nav class="bg-indigo-700 text-white p-4 shadow-lg sticky top-0 z-50">
@@ -47,7 +58,7 @@
     <div id="authModal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl success-animation">
             <h3 class="text-xl font-bold mb-2 text-slate-900 text-center">Acesso Restrito</h3>
-            <p class="text-slate-500 text-sm text-center mb-6">Insira a senha de administrador para visualizar os relatórios.</p>
+            <p class="text-slate-500 text-sm text-center mb-6">Insira a senha de administrador para visualizar os relatórios de qualquer lugar.</p>
             <input type="password" id="adminPass" class="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none" placeholder="Senha">
             <div class="flex gap-3">
                 <button onclick="closeAuthModal()" class="flex-1 px-4 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition">Cancelar</button>
@@ -68,7 +79,6 @@
                 </p>
 
                 <form id="satisfactionForm" class="space-y-10">
-                    <!-- Pergunta: Categoria -->
                     <div class="space-y-4">
                         <label class="block text-sm font-semibold uppercase tracking-wider text-indigo-600">Área de Atendimento *</label>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -95,7 +105,6 @@
                         </div>
                     </div>
 
-                    <!-- Estrelas -->
                     <div class="space-y-4">
                         <label class="block text-lg font-medium text-slate-700 italic">1. Avalie o atendimento técnico em seu último chamado:*</label>
                         <div class="star-rating">
@@ -134,7 +143,7 @@
                         <textarea name="comment" rows="4" class="w-full p-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition" placeholder="Escreva aqui suas sugestões ou observações..."></textarea>
                     </div>
 
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                    <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed">
                         Enviar Feedback
                     </button>
                 </form>
@@ -145,7 +154,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <h2 class="text-3xl font-bold mb-4">Obrigado pelo seu feedback!</h2>
-                <p class="text-slate-600 text-lg mb-8">Sua resposta foi registrada com sucesso e ajudará a melhorar nosso atendimento.</p>
+                <p class="text-slate-600 text-lg mb-8">Sua resposta foi registrada na nuvem e ajudará a melhorar nosso atendimento.</p>
                 <button onclick="resetForm()" class="text-indigo-600 font-semibold hover:underline">Enviar outra avaliação</button>
             </div>
         </div>
@@ -153,7 +162,7 @@
         <!-- DASHBOARD (RELATÓRIOS) -->
         <div id="admin-tab" class="tab-content">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <h2 class="text-2xl font-bold text-slate-800 italic">Relatório Analítico de Suporte</h2>
+                <h2 class="text-2xl font-bold text-slate-800 italic">Relatório em Tempo Real</h2>
                 <div class="flex gap-3">
                     <button onclick="clearAllData()" class="text-xs font-bold text-rose-600 bg-white border border-rose-200 px-4 py-2 rounded-lg hover:bg-rose-50 transition shadow-sm">Zerar Banco de Dados</button>
                     <button onclick="logoutAdmin()" class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-lg hover:bg-slate-200 transition">Sair / Bloquear</button>
@@ -162,29 +171,25 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Total de Chamados</p>
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Total Global</p>
                     <h3 id="stat-total" class="text-4xl font-bold text-indigo-600">0</h3>
                 </div>
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Média de Satisfação</p>
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Média Geral</p>
                     <h3 id="stat-avg" class="text-4xl font-bold text-amber-500">0.0</h3>
                 </div>
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Qualidade Geral</p>
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Qualidade Global</p>
                     <h3 id="stat-status" class="text-4xl font-bold text-emerald-500">-</h3>
                 </div>
             </div>
 
             <div id="no-data-msg" class="bg-white p-20 rounded-2xl shadow-sm border border-slate-100 text-center mb-8">
-                <div class="text-slate-300 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                </div>
-                <h3 class="text-xl font-bold text-slate-400">Nenhum dado registrado</h3>
-                <p class="text-slate-400">As estatísticas aparecerão assim que a primeira avaliação for enviada.</p>
+                <h3 class="text-xl font-bold text-slate-400">Aguardando dados da nuvem...</h3>
+                <p class="text-slate-400">Os dados aparecerão aqui assim que forem sincronizados.</p>
             </div>
 
             <div id="dashboard-content" class="hidden">
-                <!-- Gráficos -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
                         <h4 class="text-lg font-bold mb-4 text-slate-800">Distribuição por Área</h4>
@@ -196,9 +201,8 @@
                     </div>
                 </div>
 
-                <!-- Tabela -->
                 <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Estatísticas Detalhadas por Categoria</div>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Estatísticas Consolidadas (Global)</div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
@@ -214,9 +218,8 @@
                     </div>
                 </div>
 
-                <!-- Sugestões -->
                 <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Sugestões de Melhoria</div>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Sugestões (Últimas 50)</div>
                     <ul id="comments-list" class="divide-y divide-slate-100 max-h-96 overflow-y-auto"></ul>
                 </div>
             </div>
@@ -224,28 +227,86 @@
 
     </main>
 
-    <script>
-        // Carrega dados (sem mock data agora)
-        let submissions = JSON.parse(localStorage.getItem('it_survey_data')) || [];
+    <!-- Scripts Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, query, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuração injetada pelo ambiente
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Inicialização
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let submissions = [];
         let categoryChart, ratingsChart;
         let isAdminAuthenticated = false;
         const ADMIN_PASSWORD = "admin123";
+        let currentUser = null;
 
-        function requestAdminAccess() {
+        // --- AUTENTICAÇÃO ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Erro na autenticação:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                setupDataListener();
+            }
+        });
+
+        initAuth();
+
+        // --- LISTENER DE DADOS ---
+        const setupDataListener = () => {
+            const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+            
+            onSnapshot(feedbacksRef, (snapshot) => {
+                submissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (document.getElementById('admin-tab').classList.contains('active')) {
+                    updateDashboard();
+                }
+            }, (error) => {
+                console.error("Erro ao ler dados da nuvem:", error);
+            });
+        };
+
+        // --- FUNÇÕES GLOBAIS ---
+        window.switchTab = (tab) => {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+            if(tab === 'admin') updateDashboard();
+        };
+
+        window.requestAdminAccess = () => {
             if (isAdminAuthenticated) switchTab('admin');
             else {
                 document.getElementById('authModal').classList.add('active');
                 document.getElementById('adminPass').focus();
             }
-        }
+        };
 
-        function closeAuthModal() {
+        window.closeAuthModal = () => {
             document.getElementById('authModal').classList.remove('active');
             document.getElementById('adminPass').value = '';
             document.getElementById('authError').classList.add('hidden');
-        }
+        };
 
-        function validateAdmin() {
+        window.validateAdmin = () => {
             if (document.getElementById('adminPass').value === ADMIN_PASSWORD) {
                 isAdminAuthenticated = true;
                 closeAuthModal();
@@ -254,28 +315,28 @@
                 document.getElementById('authError').classList.remove('hidden');
                 document.getElementById('adminPass').value = '';
             }
-        }
+        };
 
-        function logoutAdmin() {
+        window.logoutAdmin = () => {
             isAdminAuthenticated = false;
             switchTab('form');
-        }
+        };
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab + '-tab').classList.add('active');
-            if(tab === 'admin') updateDashboard();
-        }
-
-        function clearAllData() {
-            if (confirm("ATENÇÃO: Isso apagará permanentEMENTE todas as respostas e zerará os gráficos. Deseja continuar?")) {
-                submissions = [];
-                localStorage.removeItem('it_survey_data');
-                updateDashboard();
+        window.clearAllData = async () => {
+            if (!currentUser) return;
+            if (confirm("ATENÇÃO: Você está prestes a apagar TODOS os dados da nuvem. Deseja continuar?")) {
+                const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+                const snapshot = await getDocs(feedbacksRef);
+                const batch = writeBatch(db);
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                alert("Base de dados zerada com sucesso.");
             }
-        }
+        };
 
-        function updateDashboard() {
+        window.updateDashboard = () => {
             const total = submissions.length;
             document.getElementById('stat-total').innerText = total;
 
@@ -334,34 +395,56 @@
                 options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5 } } }
             });
 
-            document.getElementById('comments-list').innerHTML = submissions.filter(s => s.comment?.trim()).map(s => `<li class="p-6 border-l-4 border-transparent hover:border-indigo-500 hover:bg-slate-50 transition"><div class="flex justify-between items-start mb-2"><span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${s.category}</span><span class="text-[10px] text-slate-400">Nota: ${((s.q1+s.q2+s.q3)/3).toFixed(1)}</span></div><p class="text-slate-700 text-sm italic">"${s.comment}"</p></li>`).reverse().join('') || '<li class="p-8 text-slate-400 italic text-center">Nenhum feedback recebido.</li>';
+            document.getElementById('comments-list').innerHTML = submissions.filter(s => s.comment?.trim()).slice(-50).map(s => `<li class="p-6 border-l-4 border-transparent hover:border-indigo-500 hover:bg-slate-50 transition"><div class="flex justify-between items-start mb-2"><span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${s.category}</span><span class="text-[10px] text-slate-400">Nota: ${((s.q1+s.q2+s.q3)/3).toFixed(1)}</span></div><p class="text-slate-700 text-sm italic">"${s.comment}"</p></li>`).reverse().join('') || '<li class="p-8 text-slate-400 italic text-center">Nenhum feedback recebido.</li>';
         }
 
-        document.getElementById('adminPass').addEventListener('keypress', e => { if (e.key === 'Enter') validateAdmin(); });
-        
-        document.getElementById('satisfactionForm').addEventListener('submit', function(e) {
+        // --- SUBMISSÃO ---
+        document.getElementById('satisfactionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            if (!currentUser) {
+                alert("Aguardando conexão com a nuvem... Tente em instantes.");
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Enviando para a nuvem...";
+
             const formData = new FormData(this);
-            submissions.push({
-                id: Date.now(),
+            const data = {
                 category: formData.get('category'),
                 q1: parseInt(formData.get('q1')),
                 q2: parseInt(formData.get('q2')),
                 q3: parseInt(formData.get('q3')),
-                comment: formData.get('comment')
-            });
-            localStorage.setItem('it_survey_data', JSON.stringify(submissions));
-            document.getElementById('satisfactionForm').classList.add('hidden');
-            document.getElementById('successMessage').classList.remove('hidden');
+                comment: formData.get('comment'),
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+                await addDoc(feedbacksRef, data);
+                
+                document.getElementById('satisfactionForm').classList.add('hidden');
+                document.getElementById('successMessage').classList.remove('hidden');
+            } catch (error) {
+                console.error("Erro ao salvar:", error);
+                alert("Ocorreu um erro ao enviar seu feedback. Por favor, tente novamente.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Enviar Feedback";
+            }
         });
 
-        function resetForm() {
+        window.resetForm = () => {
             document.getElementById('satisfactionForm').reset();
             document.getElementById('satisfactionForm').classList.remove('hidden');
             document.getElementById('successMessage').classList.add('hidden');
             document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
-        }
+        };
 
+        // Eventos de teclado e visual
+        document.getElementById('adminPass').addEventListener('keypress', e => { if (e.key === 'Enter') validateAdmin(); });
+        
         const categoryInputs = document.querySelectorAll('input[name="category"]');
         categoryInputs.forEach(input => {
             input.addEventListener('change', () => {
@@ -369,8 +452,6 @@
                 if (input.checked) input.parentElement.classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-600');
             });
         });
-
-        window.onload = () => updateDashboard();
     </script>
 </body>
 </html>
