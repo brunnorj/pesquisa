@@ -33,10 +33,11 @@
 </head>
 <body class="min-h-screen text-slate-800">
 
-    <!-- Ecrã de Carregamento Inicial -->
+    <!-- Tela de Carregamento Inicial -->
     <div id="loadingScreen" class="loading-overlay">
-        <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
-        <p id="loadingText" class="text-slate-500 font-medium animate-pulse">A ligar ao servidor...</p>
+        <div id="loaderIcon" class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
+        <p id="loadingText" class="text-slate-500 font-medium animate-pulse text-center px-4">A ligar ao servidor de nuvem...</p>
+        <button id="retryBtn" onclick="location.reload()" class="hidden mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Tentar Novamente</button>
     </div>
 
     <!-- Navegação -->
@@ -232,126 +233,151 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Verifica se a configuração existe
-        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        if (!rawConfig) {
-            document.getElementById('loadingText').innerText = "Erro de configuração. Recarregue.";
-        }
-        
-        const firebaseConfig = JSON.parse(rawConfig);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // VERIFICAÇÃO DE AMBIENTE:
+        // Se __firebase_config não estiver definido, o site está fora do Canvas e a nuvem não funcionará.
+        const startApp = async () => {
+            const loadingText = document.getElementById('loadingText');
+            const retryBtn = document.getElementById('retryBtn');
+            const loaderIcon = document.getElementById('loaderIcon');
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let submissions = [];
-        let categoryChart, ratingsChart;
-        let isAdminAuthenticated = false;
-        const ADMIN_PASSWORD = "admin123";
-        let currentUser = null;
-
-        // Função para esconder o loader com segurança
-        const hideLoading = () => {
-            const loader = document.getElementById('loadingScreen');
-            if (loader) {
-                loader.style.opacity = '0';
-                setTimeout(() => loader.classList.add('hidden'), 500);
+            if (typeof __firebase_config === 'undefined') {
+                loadingText.innerHTML = "<span class='text-rose-500 font-bold'>Erro de Ambiente:</span><br>A nuvem automática só funciona dentro do Canvas.<br>Para uso externo, é necessário configurar um Firebase próprio.";
+                loadingText.classList.remove('animate-pulse');
+                loaderIcon.classList.add('hidden');
+                return;
             }
-        };
-
-        // Início da aplicação
-        const startApplication = async () => {
-            // Regista o listener de auth IMEDIATAMENTE
-            onAuthStateChanged(auth, (user) => {
-                currentUser = user;
-                if (user) {
-                    hideLoading();
-                    setupDataListener();
-                }
-            });
 
             try {
-                // Tenta autenticar
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                let submissions = [];
+                let categoryChart, ratingsChart;
+                let isAdminAuthenticated = false;
+                const ADMIN_PASSWORD = "admin123";
+                let currentUser = null;
+
+                const hideLoading = () => {
+                    const loader = document.getElementById('loadingScreen');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.classList.add('hidden'), 500);
+                    }
+                };
+
+                // Listener de autenticação
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) {
+                        hideLoading();
+                        setupDataListener(db, appId);
+                    }
+                });
+
+                // Autenticação
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (error) {
-                console.error("Erro na autenticação:", error);
-                // Se falhar a auth, liberta o ecrã para evitar bloqueio infinito
-                hideLoading();
-            }
 
-            // Timeout de segurança absoluto (5 segundos)
-            setTimeout(hideLoading, 5000);
-        };
+                // Timeout de segurança
+                setTimeout(hideLoading, 5000);
 
-        const setupDataListener = () => {
-            if (!currentUser) return;
-            const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
-            
-            onSnapshot(feedbacksRef, (snapshot) => {
-                submissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (document.getElementById('admin-tab').classList.contains('active')) {
-                    updateDashboard();
+                // Exportar funções para o escopo global de forma segura
+                window.switchTab = (tab) => {
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(tab + '-tab').classList.add('active');
+                    if(tab === 'admin') updateDashboard(submissions, categoryChart, ratingsChart);
+                };
+
+                window.requestAdminAccess = () => {
+                    if (isAdminAuthenticated) window.switchTab('admin');
+                    else {
+                        document.getElementById('authModal').classList.add('active');
+                        document.getElementById('adminPass').focus();
+                    }
+                };
+
+                window.closeAuthModal = () => {
+                    document.getElementById('authModal').classList.remove('active');
+                    document.getElementById('adminPass').value = '';
+                    document.getElementById('authError').classList.add('hidden');
+                };
+
+                window.validateAdmin = () => {
+                    if (document.getElementById('adminPass').value === ADMIN_PASSWORD) {
+                        isAdminAuthenticated = true;
+                        window.closeAuthModal();
+                        window.switchTab('admin');
+                    } else {
+                        document.getElementById('authError').classList.remove('hidden');
+                        document.getElementById('adminPass').value = '';
+                    }
+                };
+
+                window.logoutAdmin = () => {
+                    isAdminAuthenticated = false;
+                    window.switchTab('form');
+                };
+
+                window.clearAllData = async () => {
+                    if (!currentUser) return;
+                    if (confirm("Deseja apagar todos os dados permanentemente?")) {
+                        const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+                        const snapshot = await getDocs(feedbacksRef);
+                        const batch = writeBatch(db);
+                        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+                        await batch.commit();
+                        alert("Dados apagados.");
+                    }
+                };
+
+                // Listener de dados
+                function setupDataListener(db, appId) {
+                    const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+                    onSnapshot(feedbacksRef, (snapshot) => {
+                        submissions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        if (document.getElementById('admin-tab').classList.contains('active')) {
+                            updateDashboard(submissions, categoryChart, ratingsChart);
+                        }
+                    });
                 }
-            }, (error) => {
-                console.error("Erro no carregamento de dados:", error);
-            });
-        };
 
-        // Funções Globais expostas ao window
-        window.switchTab = (tab) => {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab + '-tab').classList.add('active');
-            if(tab === 'admin') updateDashboard();
-        };
+                // Submissão do formulário
+                document.getElementById('satisfactionForm').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    if (!currentUser) return;
+                    const formData = new FormData(this);
+                    const data = {
+                        category: formData.get('category'),
+                        q1: parseInt(formData.get('q1')),
+                        q2: parseInt(formData.get('q2')),
+                        q3: parseInt(formData.get('q3')),
+                        comment: formData.get('comment'),
+                        timestamp: new Date().toISOString()
+                    };
+                    try {
+                        const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
+                        await addDoc(feedbacksRef, data);
+                        document.getElementById('satisfactionForm').classList.add('hidden');
+                        document.getElementById('successMessage').classList.remove('hidden');
+                    } catch (err) { alert("Erro ao enviar: " + err.message); }
+                });
 
-        window.requestAdminAccess = () => {
-            if (isAdminAuthenticated) switchTab('admin');
-            else {
-                document.getElementById('authModal').classList.add('active');
-                document.getElementById('adminPass').focus();
+            } catch (error) {
+                loadingText.innerText = "Erro ao conectar à nuvem. Verifique sua conexão.";
+                retryBtn.classList.remove('hidden');
+                console.error(error);
             }
         };
 
-        window.closeAuthModal = () => {
-            document.getElementById('authModal').classList.remove('active');
-            document.getElementById('adminPass').value = '';
-            document.getElementById('authError').classList.add('hidden');
-        };
-
-        window.validateAdmin = () => {
-            if (document.getElementById('adminPass').value === ADMIN_PASSWORD) {
-                isAdminAuthenticated = true;
-                closeAuthModal();
-                switchTab('admin');
-            } else {
-                document.getElementById('authError').classList.remove('hidden');
-                document.getElementById('adminPass').value = '';
-            }
-        };
-
-        window.logoutAdmin = () => {
-            isAdminAuthenticated = false;
-            switchTab('form');
-        };
-
-        window.clearAllData = async () => {
-            if (!currentUser) return;
-            if (confirm("Deseja apagar todos os dados permanentemente?")) {
-                const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
-                const snapshot = await getDocs(feedbacksRef);
-                const batch = writeBatch(db);
-                snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-                await batch.commit();
-                alert("Dados apagados.");
-            }
-        };
-
-        window.updateDashboard = () => {
+        // Funções auxiliares (sempre disponíveis)
+        function updateDashboard(submissions, categoryChart, ratingsChart) {
             const total = submissions.length;
             document.getElementById('stat-total').innerText = total;
 
@@ -391,50 +417,35 @@
                 return `<tr><td class="px-6 py-4 font-semibold text-slate-700">${cat}</td><td class="px-6 py-4">${count}</td><td class="px-6 py-4 text-center font-bold">${avg}</td></tr>`;
             }).join('');
 
-            if (categoryChart) categoryChart.destroy();
-            categoryChart = new Chart(document.getElementById('categoryChart'), {
+            // Gráficos (recriados para evitar erro de instância)
+            const ctxCat = document.getElementById('categoryChart');
+            const ctxRat = document.getElementById('ratingsChart');
+
+            if (window.catChartInstance) window.catChartInstance.destroy();
+            window.catChartInstance = new Chart(ctxCat, {
                 type: 'doughnut',
                 data: { labels: categories, datasets: [{ data: categories.map(c => catData[c].count), backgroundColor: ['#6366f1', '#f43f5e', '#10b981', '#f59e0b'] }] },
                 options: { maintainAspectRatio: false }
             });
 
-            if (ratingsChart) ratingsChart.destroy();
-            ratingsChart = new Chart(document.getElementById('ratingsChart'), {
+            if (window.ratChartInstance) window.ratChartInstance.destroy();
+            window.ratChartInstance = new Chart(ctxRat, {
                 type: 'bar',
                 data: { labels: ['Atendimento', 'Cordialidade', 'Solução'], datasets: [{ data: [avgAtendimento, avgCordialidade, avgSolucao], backgroundColor: '#818cf8' }] },
                 options: { maintainAspectRatio: false, scales: { y: { min: 0, max: 5 } } }
             });
 
             document.getElementById('comments-list').innerHTML = submissions.filter(s => s.comment?.trim()).map(s => `<li class="p-4 bg-slate-50 rounded-lg mb-2"><p class="text-sm italic">"${s.comment}"</p></li>`).reverse().join('');
-        };
-
-        document.getElementById('satisfactionForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (!currentUser) return;
-            const formData = new FormData(this);
-            const data = {
-                category: formData.get('category'),
-                q1: parseInt(formData.get('q1')),
-                q2: parseInt(formData.get('q2')),
-                q3: parseInt(formData.get('q3')),
-                comment: formData.get('comment'),
-                timestamp: new Date().toISOString()
-            };
-            try {
-                const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
-                await addDoc(feedbacksRef, data);
-                document.getElementById('satisfactionForm').classList.add('hidden');
-                document.getElementById('successMessage').classList.remove('hidden');
-            } catch (e) { alert("Erro ao enviar."); }
-        });
+        }
 
         window.resetForm = () => {
             document.getElementById('satisfactionForm').reset();
             document.getElementById('satisfactionForm').classList.remove('hidden');
             document.getElementById('successMessage').classList.add('hidden');
+            document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50'));
         };
 
-        // Eventos Visuais
+        // UI Event Listeners
         document.querySelectorAll('input[name="category"]').forEach(input => {
             input.addEventListener('change', () => {
                 document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50'));
@@ -442,7 +453,8 @@
             });
         });
 
-        startApplication();
+        // Inicializar
+        startApp();
     </script>
 </body>
 </html>
