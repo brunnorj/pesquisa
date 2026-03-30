@@ -33,10 +33,10 @@
 </head>
 <body class="min-h-screen text-slate-800">
 
-    <!-- Tela de Carregamento Inicial -->
+    <!-- Ecrã de Carregamento Inicial -->
     <div id="loadingScreen" class="loading-overlay">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
-        <p id="loadingText" class="text-slate-500 font-medium animate-pulse">Sincronizando com a nuvem...</p>
+        <p id="loadingText" class="text-slate-500 font-medium animate-pulse">A ligar ao servidor...</p>
     </div>
 
     <!-- Navegação -->
@@ -59,7 +59,7 @@
     <div id="authModal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl success-animation">
             <h3 class="text-xl font-bold mb-2 text-slate-900 text-center">Acesso Restrito</h3>
-            <p class="text-slate-500 text-sm text-center mb-6">Insira a senha de administrador para visualizar os relatórios de qualquer lugar.</p>
+            <p class="text-slate-500 text-sm text-center mb-6">Insira a senha de administrador para visualizar os relatórios.</p>
             <input type="password" id="adminPass" class="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none" placeholder="Senha">
             <div class="flex gap-3">
                 <button onclick="closeAuthModal()" class="flex-1 px-4 py-2 text-slate-500 font-medium hover:bg-slate-100 rounded-xl transition">Cancelar</button>
@@ -144,7 +144,7 @@
                         <textarea name="comment" rows="4" class="w-full p-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition" placeholder="Escreva aqui suas sugestões ou observações..."></textarea>
                     </div>
 
-                    <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
                         Enviar Feedback
                     </button>
                 </form>
@@ -203,14 +203,13 @@
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Estatísticas Consolidadas (Global)</div>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Estatísticas Detalhadas</div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left">
                             <thead>
                                 <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest font-semibold">
                                     <th class="px-6 py-4">Categoria</th>
                                     <th class="px-6 py-4">Qtd. Atendimentos</th>
-                                    <th class="px-6 py-4">Representatividade</th>
                                     <th class="px-6 py-4 text-center">Satisfação Média</th>
                                 </tr>
                             </thead>
@@ -220,12 +219,11 @@
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Sugestões (Últimas 50)</div>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 font-bold text-slate-800">Sugestões Recebidas</div>
                     <ul id="comments-list" class="divide-y divide-slate-100 max-h-96 overflow-y-auto"></ul>
                 </div>
             </div>
         </div>
-
     </main>
 
     <!-- Scripts Firebase -->
@@ -234,7 +232,13 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // Verifica se a configuração existe
+        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        if (!rawConfig) {
+            document.getElementById('loadingText').innerText = "Erro de configuração. Recarregue.";
+        }
+        
+        const firebaseConfig = JSON.parse(rawConfig);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         const app = initializeApp(firebaseConfig);
@@ -247,43 +251,41 @@
         const ADMIN_PASSWORD = "admin123";
         let currentUser = null;
 
-        // Função de inicialização robusta
+        // Função para esconder o loader com segurança
+        const hideLoading = () => {
+            const loader = document.getElementById('loadingScreen');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
+        };
+
+        // Início da aplicação
         const startApplication = async () => {
+            // Regista o listener de auth IMEDIATAMENTE
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    hideLoading();
+                    setupDataListener();
+                }
+            });
+
             try {
-                // Tenta autenticação primeiro
+                // Tenta autenticar
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-                
-                // Monitora estado de autenticação
-                onAuthStateChanged(auth, (user) => {
-                    currentUser = user;
-                    if (user) {
-                        // Remove tela de carregamento assim que houver um usuário (mesmo anônimo)
-                        document.getElementById('loadingScreen').style.opacity = '0';
-                        setTimeout(() => {
-                            document.getElementById('loadingScreen').classList.add('hidden');
-                        }, 500);
-                        setupDataListener();
-                    }
-                });
-
-                // Timeout de segurança: se após 8 segundos ainda estiver carregando, força a entrada
-                setTimeout(() => {
-                    const loader = document.getElementById('loadingScreen');
-                    if (!loader.classList.contains('hidden')) {
-                        console.warn("Conexão demorada. Tentando forçar interface...");
-                        loader.classList.add('hidden');
-                    }
-                }, 8000);
-
             } catch (error) {
-                console.error("Erro na inicialização:", error);
-                document.getElementById('loadingText').innerText = "Erro ao conectar. Recarregue a página.";
-                document.getElementById('loadingText').classList.add('text-rose-500');
+                console.error("Erro na autenticação:", error);
+                // Se falhar a auth, liberta o ecrã para evitar bloqueio infinito
+                hideLoading();
             }
+
+            // Timeout de segurança absoluto (5 segundos)
+            setTimeout(hideLoading, 5000);
         };
 
         const setupDataListener = () => {
@@ -296,7 +298,7 @@
                     updateDashboard();
                 }
             }, (error) => {
-                console.error("Erro no listener de dados:", error);
+                console.error("Erro no carregamento de dados:", error);
             });
         };
 
@@ -339,13 +341,13 @@
 
         window.clearAllData = async () => {
             if (!currentUser) return;
-            if (confirm("ATENÇÃO: Você está prestes a apagar TODOS os dados da nuvem. Deseja continuar?")) {
+            if (confirm("Deseja apagar todos os dados permanentemente?")) {
                 const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
                 const snapshot = await getDocs(feedbacksRef);
                 const batch = writeBatch(db);
                 snapshot.docs.forEach((doc) => batch.delete(doc.ref));
                 await batch.commit();
-                alert("Base de dados zerada com sucesso.");
+                alert("Dados apagados.");
             }
         };
 
@@ -354,8 +356,6 @@
             document.getElementById('stat-total').innerText = total;
 
             if (total === 0) {
-                document.getElementById('stat-avg').innerText = "0.0";
-                document.getElementById('stat-status').innerText = "-";
                 document.getElementById('no-data-msg').classList.remove('hidden');
                 document.getElementById('dashboard-content').classList.add('hidden');
                 return;
@@ -371,10 +371,9 @@
 
             document.getElementById('stat-avg').innerText = globalAvg.toFixed(1);
             const statusEl = document.getElementById('stat-status');
-            if (globalAvg >= 4.5) { statusEl.innerText = "Excelente"; statusEl.className = "text-4xl font-bold text-emerald-500"; }
-            else if (globalAvg >= 3.5) { statusEl.innerText = "Bom"; statusEl.className = "text-4xl font-bold text-indigo-500"; }
-            else if (globalAvg >= 2.5) { statusEl.innerText = "Regular"; statusEl.className = "text-4xl font-bold text-amber-500"; }
-            else { statusEl.innerText = "Crítico"; statusEl.className = "text-4xl font-bold text-rose-500"; }
+            if (globalAvg >= 4.5) statusEl.innerText = "Excelente";
+            else if (globalAvg >= 3.5) statusEl.innerText = "Bom";
+            else statusEl.innerText = "Regular";
 
             const categories = ['Internet', 'Hardware', 'Software', 'Outros'];
             const catData = {};
@@ -389,37 +388,29 @@
             document.getElementById('category-stats-table').innerHTML = categories.map(cat => {
                 const count = catData[cat].count;
                 const avg = count > 0 ? (catData[cat].sum / count).toFixed(1) : "0.0";
-                const percentage = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
-                let badgeClass = parseFloat(avg) >= 4 ? "bg-green-100 text-green-700" : parseFloat(avg) >= 3 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700";
-                return `<tr><td class="px-6 py-4 font-semibold text-slate-700">${cat}</td><td class="px-6 py-4">${count}</td><td class="px-6 py-4"><div class="w-full bg-slate-100 rounded-full h-2 max-w-[100px]"><div class="bg-indigo-500 h-2 rounded-full" style="width: ${percentage}%"></div></div><span class="text-[10px] text-slate-400 mt-1 block">${percentage}%</span></td><td class="px-6 py-4 text-center"><span class="px-3 py-1 rounded-full text-sm font-bold ${badgeClass}">${avg}</span></td></tr>`;
+                return `<tr><td class="px-6 py-4 font-semibold text-slate-700">${cat}</td><td class="px-6 py-4">${count}</td><td class="px-6 py-4 text-center font-bold">${avg}</td></tr>`;
             }).join('');
 
             if (categoryChart) categoryChart.destroy();
             categoryChart = new Chart(document.getElementById('categoryChart'), {
                 type: 'doughnut',
-                data: { labels: categories, datasets: [{ data: categories.map(c => catData[c].count), backgroundColor: ['#6366f1', '#f43f5e', '#10b981', '#f59e0b'], borderWidth: 0 }] },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                data: { labels: categories, datasets: [{ data: categories.map(c => catData[c].count), backgroundColor: ['#6366f1', '#f43f5e', '#10b981', '#f59e0b'] }] },
+                options: { maintainAspectRatio: false }
             });
 
             if (ratingsChart) ratingsChart.destroy();
             ratingsChart = new Chart(document.getElementById('ratingsChart'), {
                 type: 'bar',
-                data: { labels: ['Atendimento', 'Cordialidade', 'Solução'], datasets: [{ data: [avgAtendimento, avgCordialidade, avgSolucao], backgroundColor: '#818cf8', borderRadius: 8 }] },
-                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5 } } }
+                data: { labels: ['Atendimento', 'Cordialidade', 'Solução'], datasets: [{ data: [avgAtendimento, avgCordialidade, avgSolucao], backgroundColor: '#818cf8' }] },
+                options: { maintainAspectRatio: false, scales: { y: { min: 0, max: 5 } } }
             });
 
-            document.getElementById('comments-list').innerHTML = submissions.filter(s => s.comment?.trim()).slice(-50).map(s => `<li class="p-6 border-l-4 border-transparent hover:border-indigo-500 hover:bg-slate-50 transition"><div class="flex justify-between items-start mb-2"><span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${s.category}</span><span class="text-[10px] text-slate-400">Nota: ${((s.q1+s.q2+s.q3)/3).toFixed(1)}</span></div><p class="text-slate-700 text-sm italic">"${s.comment}"</p></li>`).reverse().join('') || '<li class="p-8 text-slate-400 italic text-center">Nenhum feedback recebido.</li>';
-        }
+            document.getElementById('comments-list').innerHTML = submissions.filter(s => s.comment?.trim()).map(s => `<li class="p-4 bg-slate-50 rounded-lg mb-2"><p class="text-sm italic">"${s.comment}"</p></li>`).reverse().join('');
+        };
 
-        // --- SUBMISSÃO ---
         document.getElementById('satisfactionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!currentUser) return;
-
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerText = "Enviando...";
-
             const formData = new FormData(this);
             const data = {
                 category: formData.get('category'),
@@ -429,41 +420,29 @@
                 comment: formData.get('comment'),
                 timestamp: new Date().toISOString()
             };
-
             try {
                 const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
                 await addDoc(feedbacksRef, data);
                 document.getElementById('satisfactionForm').classList.add('hidden');
                 document.getElementById('successMessage').classList.remove('hidden');
-            } catch (error) {
-                console.error("Erro ao salvar:", error);
-                alert("Erro ao enviar. Verifique a conexão.");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Enviar Feedback";
-            }
+            } catch (e) { alert("Erro ao enviar."); }
         });
 
         window.resetForm = () => {
             document.getElementById('satisfactionForm').reset();
             document.getElementById('satisfactionForm').classList.remove('hidden');
             document.getElementById('successMessage').classList.add('hidden');
-            document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
         };
 
-        // UI Event Listeners
-        document.getElementById('adminPass').addEventListener('keypress', e => { if (e.key === 'Enter') validateAdmin(); });
-        
+        // Eventos Visuais
         document.querySelectorAll('input[name="category"]').forEach(input => {
             input.addEventListener('change', () => {
-                document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
-                if (input.checked) input.parentElement.classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-600');
+                document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50'));
+                if (input.checked) input.parentElement.classList.add('border-indigo-500', 'bg-indigo-50');
             });
         });
 
-        // Inicia a aplicação
         startApplication();
-
     </script>
 </body>
 </html>
