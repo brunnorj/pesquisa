@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Satisfação - Suporte TI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .star-rating { direction: rtl; display: inline-flex; }
+        .star-rating input { display: none; }
+        .star-rating label { color: #cbd5e1; cursor: pointer; transition: color 0.2s; font-size: 2.5rem; }
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label { color: #fbbf24; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .success-animation { animation: scaleIn 0.5s ease-out; }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+    <!-- Navegação -->
+    <nav class="bg-indigo-700 text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+                <span class="font-bold text-xl tracking-tight">TechSupport Feedback</span>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="switchTab('form')" class="px-4 py-2 rounded-lg hover:bg-indigo-600 transition font-medium">Avaliar</button>
+                <button onclick="switchTab('admin')" class="px-4 py-2 rounded-lg bg-indigo-900/50 hover:bg-indigo-800 transition font-medium border border-indigo-400/30">Relatórios Internos</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto p-6 mt-8">
+        
+        <!-- FORMULÁRIO -->
+        <div id="form-tab" class="tab-content active">
+            <div class="glass-card rounded-2xl shadow-xl p-8 mb-8">
+                <h1 class="text-3xl font-bold text-slate-900 mb-4">Sua opinião é fundamental</h1>
+                <p class="text-slate-600 leading-relaxed mb-8">
+                    Este formulário visa coletar indicadores de desempenho sobre os serviços de suporte técnico, conectividade e manutenção de ativos de TI. Sua participação é fundamental para o planejamento e a melhoria da infraestrutura tecnológica da Unidade.
+                </p>
+
+                <form id="satisfactionForm" class="space-y-10">
+                    <!-- Pergunta: Categoria -->
+                    <div class="space-y-4">
+                        <label class="block text-sm font-semibold uppercase tracking-wider text-indigo-600">Área de Atendimento *</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <label class="relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition group">
+                                <input type="radio" name="category" value="Internet" class="absolute opacity-0" required>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-slate-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10.5 10.5 0 0114.142 0M1.414 8.414a16.97 16.97 0 0121.172 0" /></svg>
+                                <span class="text-sm font-medium">Internet</span>
+                            </label>
+                            <label class="relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition group">
+                                <input type="radio" name="category" value="Hardware" class="absolute opacity-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-slate-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                <span class="text-sm font-medium">Hardware</span>
+                            </label>
+                            <label class="relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition group">
+                                <input type="radio" name="category" value="Software" class="absolute opacity-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-slate-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                                <span class="text-sm font-medium">Software</span>
+                            </label>
+                            <label class="relative flex flex-col items-center p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition group">
+                                <input type="radio" name="category" value="Outros" class="absolute opacity-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-slate-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                                <span class="text-sm font-medium">Outros</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Estrelas: Pergunta 1 -->
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-slate-700 italic">1. Avalie o atendimento técnico em seu último chamado:*</label>
+                        <div class="star-rating">
+                            <input type="radio" name="q1" id="q1-5" value="5" required/><label for="q1-5">★</label>
+                            <input type="radio" name="q1" id="q1-4" value="4"/><label for="q1-4">★</label>
+                            <input type="radio" name="q1" id="q1-3" value="3"/><label for="q1-3">★</label>
+                            <input type="radio" name="q1" id="q1-2" value="2"/><label for="q1-2">★</label>
+                            <input type="radio" name="q1" id="q1-1" value="1"/><label for="q1-1">★</label>
+                        </div>
+                    </div>
+
+                    <!-- Estrelas: Pergunta 2 -->
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-slate-700 italic">2. Avalie a cordialidade do técnico de suporte:*</label>
+                        <div class="star-rating">
+                            <input type="radio" name="q2" id="q2-5" value="5" required/><label for="q2-5">★</label>
+                            <input type="radio" name="q2" id="q2-4" value="4"/><label for="q2-4">★</label>
+                            <input type="radio" name="q2" id="q2-3" value="3"/><label for="q2-3">★</label>
+                            <input type="radio" name="q2" id="q2-2" value="2"/><label for="q2-2">★</label>
+                            <input type="radio" name="q2" id="q2-1" value="1"/><label for="q2-1">★</label>
+                        </div>
+                    </div>
+
+                    <!-- Estrelas: Pergunta 3 -->
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-slate-700 italic">3. Avalie a solução apresentada pelo técnico de suporte:*</label>
+                        <div class="star-rating">
+                            <input type="radio" name="q3" id="q3-5" value="5" required/><label for="q3-5">★</label>
+                            <input type="radio" name="q3" id="q3-4" value="4"/><label for="q3-4">★</label>
+                            <input type="radio" name="q3" id="q3-3" value="3"/><label for="q3-3">★</label>
+                            <input type="radio" name="q3" id="q3-2" value="2"/><label for="q3-2">★</label>
+                            <input type="radio" name="q3" id="q3-1" value="1"/><label for="q3-1">★</label>
+                        </div>
+                    </div>
+
+                    <!-- Comentário -->
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-slate-700 italic">4. O que podemos fazer para melhorar seu próximo atendimento?</label>
+                        <textarea name="comment" rows="4" class="w-full p-4 border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition" placeholder="Escreva aqui suas sugestões ou observações..."></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                        Enviar Feedback
+                    </button>
+                </form>
+            </div>
+            
+            <div id="successMessage" class="hidden success-animation text-center p-12 glass-card rounded-2xl shadow-xl">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-green-100 text-green-600 rounded-full mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-4">Obrigado pelo seu feedback!</h2>
+                <p class="text-slate-600 text-lg mb-8">Sua resposta foi registrada com sucesso e ajudará a melhorar nosso atendimento.</p>
+                <button onclick="resetForm()" class="text-indigo-600 font-semibold hover:underline">Enviar outra avaliação</button>
+            </div>
+        </div>
+
+        <!-- DASHBOARD (RELATÓRIOS) -->
+        <div id="admin-tab" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Total de Chamados</p>
+                    <h3 id="stat-total" class="text-4xl font-bold text-indigo-600">0</h3>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Média de Satisfação</p>
+                    <h3 id="stat-avg" class="text-4xl font-bold text-amber-500">0.0</h3>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Qualidade Geral</p>
+                    <h3 id="stat-status" class="text-4xl font-bold text-emerald-500">-</h3>
+                </div>
+            </div>
+
+            <!-- Gráficos Principais -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                    <h4 class="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                        Distribuição por Área
+                    </h4>
+                    <div class="h-64 flex justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                    <h4 class="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        Médias por Critério
+                    </h4>
+                    <div class="h-64">
+                        <canvas id="ratingsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA DE ESTATÍSTICAS POR CATEGORIA (NOVO) -->
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8">
+                <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        Estatísticas Detalhadas por Categoria
+                    </h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest font-semibold">
+                                <th class="px-6 py-4">Categoria</th>
+                                <th class="px-6 py-4">Qtd. Atendimentos</th>
+                                <th class="px-6 py-4">Representatividade</th>
+                                <th class="px-6 py-4 text-center">Satisfação Média</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-stats-table" class="divide-y divide-slate-100">
+                            <!-- Injetado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sugestões -->
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50">
+                    <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                        Sugestões de Melhoria
+                    </h4>
+                </div>
+                <ul id="comments-list" class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                    <li class="p-6 text-slate-500 italic text-center">Nenhum comentário registrado ainda.</li>
+                </ul>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Banco de Dados Mock
+        let submissions = JSON.parse(localStorage.getItem('it_survey_data')) || [];
+
+        // Inicialização de Gráficos
+        let categoryChart, ratingsChart;
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+            if(tab === 'admin') updateDashboard();
+        }
+
+        function updateDashboard() {
+            const total = submissions.length;
+            document.getElementById('stat-total').innerText = total;
+
+            if (total === 0) {
+                document.getElementById('stat-avg').innerText = "0.0";
+                document.getElementById('stat-status').innerText = "-";
+                return;
+            }
+
+            // Cálculo de Médias Gerais
+            const avgAtendimento = (submissions.reduce((acc, curr) => acc + curr.q1, 0) / total);
+            const avgCordialidade = (submissions.reduce((acc, curr) => acc + curr.q2, 0) / total);
+            const avgSolucao = (submissions.reduce((acc, curr) => acc + curr.q3, 0) / total);
+            const globalAvg = ((avgAtendimento + avgCordialidade + avgSolucao) / 3);
+
+            document.getElementById('stat-avg').innerText = globalAvg.toFixed(1);
+            
+            // Status de Qualidade
+            const statusEl = document.getElementById('stat-status');
+            if (globalAvg >= 4.5) { statusEl.innerText = "Excelente"; statusEl.className = "text-4xl font-bold text-emerald-500"; }
+            else if (globalAvg >= 3.5) { statusEl.innerText = "Bom"; statusEl.className = "text-4xl font-bold text-indigo-500"; }
+            else if (globalAvg >= 2.5) { statusEl.innerText = "Regular"; statusEl.className = "text-4xl font-bold text-amber-500"; }
+            else { statusEl.innerText = "Crítico"; statusEl.className = "text-4xl font-bold text-rose-500"; }
+
+            // Estatísticas por Categoria (Lógica da Tabela)
+            const categories = ['Internet', 'Hardware', 'Software', 'Outros'];
+            const catData = {};
+            categories.forEach(cat => catData[cat] = { count: 0, sum: 0 });
+
+            submissions.forEach(s => {
+                if (catData[s.category]) {
+                    catData[s.category].count++;
+                    catData[s.category].sum += (s.q1 + s.q2 + s.q3) / 3;
+                }
+            });
+
+            const tableBody = document.getElementById('category-stats-table');
+            tableBody.innerHTML = categories.map(cat => {
+                const count = catData[cat].count;
+                const avg = count > 0 ? (catData[cat].sum / count).toFixed(1) : "0.0";
+                const percentage = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
+                
+                // Cor da badge de média
+                let badgeClass = "bg-slate-100 text-slate-600";
+                if(parseFloat(avg) >= 4) badgeClass = "bg-green-100 text-green-700";
+                else if(parseFloat(avg) >= 3) badgeClass = "bg-blue-100 text-blue-700";
+                else if(parseFloat(avg) > 0) badgeClass = "bg-red-100 text-red-700";
+
+                return `
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="px-6 py-4 font-semibold text-slate-700">${cat}</td>
+                        <td class="px-6 py-4 text-slate-600">${count} chamados</td>
+                        <td class="px-6 py-4">
+                            <div class="w-full bg-slate-100 rounded-full h-2 max-w-[100px]">
+                                <div class="bg-indigo-500 h-2 rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1 block">${percentage}% do total</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-sm font-bold ${badgeClass}">${avg}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Gráfico de Pizza (Categorias)
+            if (categoryChart) categoryChart.destroy();
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: categories.map(c => catData[c].count),
+                        backgroundColor: ['#6366f1', '#f43f5e', '#10b981', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } } } 
+                }
+            });
+
+            // Gráfico de Barras (Critérios)
+            if (ratingsChart) ratingsChart.destroy();
+            const ctx2 = document.getElementById('ratingsChart').getContext('2d');
+            ratingsChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Atendimento', 'Cordialidade', 'Solução'],
+                    datasets: [{
+                        label: 'Nota Média',
+                        data: [avgAtendimento.toFixed(1), avgCordialidade.toFixed(1), avgSolucao.toFixed(1)],
+                        backgroundColor: '#818cf8',
+                        borderRadius: 8,
+                        barThickness: 40
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { min: 0, max: 5, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Lista de comentários
+            const list = document.getElementById('comments-list');
+            const commentsHtml = submissions
+                .filter(s => s.comment && s.comment.trim() !== "")
+                .map(s => `
+                    <li class="p-6 hover:bg-slate-50 transition border-l-4 border-transparent hover:border-indigo-500">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">${s.category}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">Nota: ${( (s.q1+s.q2+s.q3)/3 ).toFixed(1)}/5</span>
+                        </div>
+                        <p class="text-slate-700 text-sm leading-relaxed">"${s.comment}"</p>
+                    </li>
+                `).reverse().join('');
+            
+            list.innerHTML = commentsHtml || '<li class="p-8 text-slate-400 italic text-center">Nenhum feedback textual recebido até o momento.</li>';
+        }
+
+        // Eventos do Formulário
+        document.getElementById('satisfactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = {
+                id: Date.now(),
+                category: formData.get('category'),
+                q1: parseInt(formData.get('q1')),
+                q2: parseInt(formData.get('q2')),
+                q3: parseInt(formData.get('q3')),
+                comment: formData.get('comment'),
+                date: new Date().toLocaleDateString('pt-BR')
+            };
+
+            submissions.push(data);
+            localStorage.setItem('it_survey_data', JSON.stringify(submissions));
+
+            document.getElementById('satisfactionForm').classList.add('hidden');
+            document.getElementById('successMessage').classList.remove('hidden');
+            
+            // Garantir que os dados mock iniciais sumam se o usuário começar a preencher
+            if(submissions.length > 10) submissions = submissions.filter(s => s.id); 
+        });
+
+        function resetForm() {
+            document.getElementById('satisfactionForm').reset();
+            document.getElementById('satisfactionForm').classList.remove('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            // Resetar visual das categorias
+            document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
+        }
+
+        // Feedback visual na seleção de categoria
+        const categoryInputs = document.querySelectorAll('input[name="category"]');
+        categoryInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                categoryInputs.forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
+                if (input.checked) {
+                    input.parentElement.classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-600');
+                }
+            });
+        });
+
+        // Mock Inicial para demonstração (se vazio)
+        window.onload = () => {
+            if (submissions.length === 0) {
+                submissions = [
+                    { category: 'Internet', q1: 5, q2: 5, q3: 4, comment: "Conexão estabilizada rapidamente.", id: 1 },
+                    { category: 'Internet', q1: 4, q2: 5, q3: 4, comment: "", id: 2 },
+                    { category: 'Hardware', q1: 2, q2: 4, q3: 2, comment: "Demorou muito para trocar o teclado.", id: 3 },
+                    { category: 'Software', q1: 5, q2: 5, q3: 5, comment: "Excelente suporte no SAP.", id: 4 },
+                    { category: 'Software', q1: 4, q2: 4, q3: 5, comment: "", id: 5 },
+                    { category: 'Outros', q1: 5, q2: 5, q3: 5, comment: "Técnico muito atencioso.", id: 6 }
+                ];
+            }
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>
