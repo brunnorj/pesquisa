@@ -27,6 +27,7 @@
         .loading-overlay { 
             position: fixed; inset: 0; background: white; z-index: 200; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
         }
     </style>
 </head>
@@ -35,7 +36,7 @@
     <!-- Tela de Carregamento Inicial -->
     <div id="loadingScreen" class="loading-overlay">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
-        <p class="text-slate-500 font-medium animate-pulse">Sincronizando com a nuvem...</p>
+        <p id="loadingText" class="text-slate-500 font-medium animate-pulse">Sincronizando com a nuvem...</p>
     </div>
 
     <!-- Navegação -->
@@ -231,13 +232,11 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, query, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuração injetada pelo ambiente
         const firebaseConfig = JSON.parse(__firebase_config);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // Inicialização
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -248,31 +247,47 @@
         const ADMIN_PASSWORD = "admin123";
         let currentUser = null;
 
-        // --- AUTENTICAÇÃO ---
-        const initAuth = async () => {
+        // Função de inicialização robusta
+        const startApplication = async () => {
             try {
+                // Tenta autenticação primeiro
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
+                
+                // Monitora estado de autenticação
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) {
+                        // Remove tela de carregamento assim que houver um usuário (mesmo anônimo)
+                        document.getElementById('loadingScreen').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('loadingScreen').classList.add('hidden');
+                        }, 500);
+                        setupDataListener();
+                    }
+                });
+
+                // Timeout de segurança: se após 8 segundos ainda estiver carregando, força a entrada
+                setTimeout(() => {
+                    const loader = document.getElementById('loadingScreen');
+                    if (!loader.classList.contains('hidden')) {
+                        console.warn("Conexão demorada. Tentando forçar interface...");
+                        loader.classList.add('hidden');
+                    }
+                }, 8000);
+
             } catch (error) {
-                console.error("Erro na autenticação:", error);
+                console.error("Erro na inicialização:", error);
+                document.getElementById('loadingText').innerText = "Erro ao conectar. Recarregue a página.";
+                document.getElementById('loadingText').classList.add('text-rose-500');
             }
         };
 
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                document.getElementById('loadingScreen').classList.add('hidden');
-                setupDataListener();
-            }
-        });
-
-        initAuth();
-
-        // --- LISTENER DE DADOS ---
         const setupDataListener = () => {
+            if (!currentUser) return;
             const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
             
             onSnapshot(feedbacksRef, (snapshot) => {
@@ -281,11 +296,11 @@
                     updateDashboard();
                 }
             }, (error) => {
-                console.error("Erro ao ler dados da nuvem:", error);
+                console.error("Erro no listener de dados:", error);
             });
         };
 
-        // --- FUNÇÕES GLOBAIS ---
+        // Funções Globais expostas ao window
         window.switchTab = (tab) => {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(tab + '-tab').classList.add('active');
@@ -328,9 +343,7 @@
                 const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
                 const snapshot = await getDocs(feedbacksRef);
                 const batch = writeBatch(db);
-                snapshot.docs.forEach((doc) => {
-                    batch.delete(doc.ref);
-                });
+                snapshot.docs.forEach((doc) => batch.delete(doc.ref));
                 await batch.commit();
                 alert("Base de dados zerada com sucesso.");
             }
@@ -401,14 +414,11 @@
         // --- SUBMISSÃO ---
         document.getElementById('satisfactionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!currentUser) {
-                alert("Aguardando conexão com a nuvem... Tente em instantes.");
-                return;
-            }
+            if (!currentUser) return;
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = "Enviando para a nuvem...";
+            submitBtn.innerText = "Enviando...";
 
             const formData = new FormData(this);
             const data = {
@@ -423,12 +433,11 @@
             try {
                 const feedbacksRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedbacks');
                 await addDoc(feedbacksRef, data);
-                
                 document.getElementById('satisfactionForm').classList.add('hidden');
                 document.getElementById('successMessage').classList.remove('hidden');
             } catch (error) {
                 console.error("Erro ao salvar:", error);
-                alert("Ocorreu um erro ao enviar seu feedback. Por favor, tente novamente.");
+                alert("Erro ao enviar. Verifique a conexão.");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Enviar Feedback";
@@ -442,16 +451,19 @@
             document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
         };
 
-        // Eventos de teclado e visual
+        // UI Event Listeners
         document.getElementById('adminPass').addEventListener('keypress', e => { if (e.key === 'Enter') validateAdmin(); });
         
-        const categoryInputs = document.querySelectorAll('input[name="category"]');
-        categoryInputs.forEach(input => {
+        document.querySelectorAll('input[name="category"]').forEach(input => {
             input.addEventListener('change', () => {
-                categoryInputs.forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
+                document.querySelectorAll('input[name="category"]').forEach(i => i.parentElement.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-600'));
                 if (input.checked) input.parentElement.classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-600');
             });
         });
+
+        // Inicia a aplicação
+        startApplication();
+
     </script>
 </body>
 </html>
